@@ -11,8 +11,10 @@ pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraw
 ```
 
 # Scrap Raw Data
-\dontrun{
-# Scrap the data of current players from Steam Charts
+```{r, eval = FALSE}
+## ATTENTION: The following code may change through seconds. In order to keep the reproducibility of this project, saving all data as csv files.
+
+# Scraping the data of current players from Steam Charts
 ## Specifying the url
 url <- "https://store.steampowered.com/stats/"
 ## Reading the HTML
@@ -36,11 +38,10 @@ rm(currentplayers_1, currentplayers_2, currentplayers_3)
 ## Change the names of variables
 colnames(currentplayers) <- c("Game", "Current.Players", "Peak.Today")
 ## Save data
-## Attention: This data may change through day. In order to keep the reproducibility of this project, saving the data as csv file.
-# write.csv(currentplayers, file = "Raw-Data/currentplayers.csv")
+write.csv(currentplayers, file = "Raw-Data/currentplayers.csv")
 rm(url, wrbpage, currentplayers)
 
-# Scrap the appid from SteamDB
+# Scraping the appid from SteamDB
 left <- "https://steamdb.info/apps/page"
 page <- 1:1400
 url <- str_c(left, page, "/")
@@ -70,15 +71,54 @@ for (i in 1:length(url)) {
 }
 Sys.time()
 AppID <- as.data.frame(cbind(appid, name))
-## Attention: This data may change through seconds. In order to keep the reproducibility of this project, saving the data as csv file.
-# write.csv(AppID, file = "Raw-Data/AppID.csv")
+## Save data
+write.csv(AppID, file = "Raw-Data/AppID.csv")
+
+# Scraping the data of each app from Steam using appid
+Current_players <- read.csv("Raw-Data/currentplayers.csv")
+Current_players_top30 <- Current_players[1:30,]
+## In order to keep the accuracy of following scraping, manually input the appid of top30
+Current_players_top30$AppID <- c(578080,570,730,359550,359550,230410,238960,582010,440,622590,
+                           582010,346110,252950,8930,289070,755790,281990,4000,872790,381210,
+                           105600,218620,377160,304930,594570,841370,221100,251570,812140,413150)
+
+left <- "https://store.steampowered.com/app/"
+id <- Current_players_top30$AppID
+url <- str_c(left, id, "/")
+
+get_genre <- function(html) {
+  # given a html of the season, return sub urls of per event
+  Genre <- html %>%
+    html_nodes(".details_block:nth-child(1) > a") %>%
+    html_text()
+  return(Genre)
 }
 
-```{r}
+get_developer <- function(html) {
+  # given a html of the season, return sub urls of per event
+ Developer <- html %>%
+    html_nodes("br+ .dev_row a") %>%
+    html_text()
+  return(Developer)
+}
+
+Info <- data.frame()
+Sys.time()
+for (i in 1:1) {
+  html <- read_html(url[i])
+  Genre[i] <- get_genre(html)
+  Developer[i] <- get_developer(html)
+}
+Sys.time()
+AppID <- as.data.frame(cbind(appid, name))
+```
+
 # Import datasets
+```{r}
 Steam_sales <- read.csv("Raw-Data/Steam sales.csv")
 Steam_playtime <- read.csv("Raw-Data/Steam top by playtime.csv")
 Current_players <- read.csv("Raw-Data/currentplayers.csv")
+#AppID <- read.csv("Raw-Data/AppID.csv")
 ```
 
 # Data Cleaning
@@ -86,16 +126,18 @@ Current_players <- read.csv("Raw-Data/currentplayers.csv")
 colnames(Steam_sales)[1] <- "Sales.rank"
 colnames(Steam_playtime)[1] <- "Playtime.rank"
 colnames(Current_players)[1] <- "CurrentPlayers.rank"
-AppID <- AppID[,-1]
-colnames(AppID) <- c("AppID", "Game")
 
 Steam <- merge(Steam_playtime, Steam_sales, by = "Game")
 Steam <- merge(Steam, Current_players, by = "Game")
-Steam <- merge(Steam, AppID, by = "Game")
+
+#AppID <- AppID[,-1]
+#colnames(AppID) <- c("AppID", "Game")
+#Steam <- merge(Steam, AppID, by = "Game")
+
 ```
 
 # EDA
-```{r, eval=F, echo=F}
+```{r}
 
 ```
 
