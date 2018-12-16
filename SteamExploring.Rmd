@@ -1,0 +1,16 @@
+---
+title: "Steam Exploring Project"
+author: "Mira Tang"
+date: "12/10/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraway", "nnet", "reshape2", "VGAM", "jsonlite", "mongolite","lubridate", "tidyverse", "stringr", "rvest", "RCurl", "XML", "htm2txt", "dplyr", "tidytext", "tidyr", "scales", "wordcloud", "rstanarm", "glmmADMB", "kableExtra","utils","leaflet", "sp", "magrittr", "maps", "htmltools", "rgdal", "maptools", "readr", "rgeos", "rmapshaper", "ggmap", "ggrepel", "RCurl", update = FALSE)
+```
+
+```{r}
+
+```
+
