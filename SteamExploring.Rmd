@@ -10,6 +10,36 @@ knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraway", "nnet", "reshape2", "VGAM", "jsonlite", "mongolite","lubridate", "tidyverse", "stringr", "rvest", "RCurl", "XML", "htm2txt", "dplyr", "tidytext", "tidyr", "scales", "wordcloud", "rstanarm", "glmmADMB", "kableExtra","utils","leaflet", "sp", "magrittr", "maps", "htmltools", "rgdal", "maptools", "readr", "rgeos", "rmapshaper", "ggmap", "ggrepel", "RCurl", update = FALSE)
 ```
 
+# Import Raw Data
+```{r, warining = FALSE, error = FALSE}
+Steam_sales <- read.csv("Raw-Data/Steam sales.csv")
+Steam_playtime <- read_csv("Raw-Data/Steam top by playtime.csv")
+```
+
+# Data Cleaning
+```{r}
+colnames(Steam_sales)[1] <- "Sales.rank"
+colnames(Steam_playtime)[1] <- "Playtime.rank"
+
+Steam <- merge(Steam_playtime,Steam_sales,by="Game")
+```
+
+# EDA
+```{r}
+
+```
+
+# Benford Analysis
+```{r}
+
+```
+
+# Text Mining
+```{r}
+
+```
+
+# Shiny apps
 ```{r}
 
 ```
