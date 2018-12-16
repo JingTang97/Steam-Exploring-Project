@@ -7,25 +7,95 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraway", "nnet", "reshape2", "VGAM", "jsonlite", "mongolite","lubridate", "tidyverse", "stringr", "rvest", "RCurl", "XML", "htm2txt", "dplyr", "tidytext", "tidyr", "scales", "wordcloud", "rstanarm", "glmmADMB", "kableExtra","utils","leaflet", "sp", "magrittr", "maps", "htmltools", "rgdal", "maptools", "readr", "rgeos", "rmapshaper", "ggmap", "ggrepel", "RCurl", update = FALSE)
+pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraway", "nnet", "reshape2", "VGAM", "jsonlite", "mongolite", "lubridate", "tidyverse", "stringr", "rvest", "RCurl", "XML", "htm2txt", "dplyr", "tidytext", "tidyr", "scales", "wordcloud", "rstanarm", "glmmADMB", "kableExtra", "utils", "leaflet", "sp", "magrittr", "maps", "htmltools", "rgdal", "maptools", "readr", "rgeos", "rmapshaper", "ggmap", "ggrepel", "RCurl", "Cairo", "readxl", "stringr", "esquisse", "expss","kableExtra", update = FALSE)
 ```
 
-# Import Raw Data
-```{r, warining = FALSE, error = FALSE}
+# Scrap Raw Data
+\dontrun{
+# Scrap the data of current players from Steam Charts
+## Specifying the url
+url <- "https://store.steampowered.com/stats/"
+## Reading the HTML
+webpage <- read_html(url)
+currentplayers_1 <- html_nodes(webpage, "td:nth-child(1) .currentServers")
+currentplayers_1 <- html_text(currentplayers_1)
+currentplayers_1 <- gsub(",","",currentplayers_1)
+currentplayers_1 <- as.data.frame(as.numeric(currentplayers_1))
+
+currentplayers_2 <- html_nodes(webpage, "td+ td .currentServers")
+currentplayers_2 <- html_text(currentplayers_2)
+currentplayers_2 <- gsub(",","",currentplayers_2)
+currentplayers_2 <- as.data.frame(as.numeric(currentplayers_2))
+
+currentplayers_3 <- html_nodes(webpage, ".gameLink")
+currentplayers_3 <- html_text(currentplayers_3)
+currentplayers_3 <- as.data.frame(currentplayers_3)
+
+currentplayers <- cbind(currentplayers_3, currentplayers_1, currentplayers_2)
+rm(currentplayers_1, currentplayers_2, currentplayers_3)
+## Change the names of variables
+colnames(currentplayers) <- c("Game", "Current.Players", "Peak.Today")
+## Save data
+## Attention: This data may change through day. In order to keep the reproducibility of this project, saving the data as csv file.
+# write.csv(currentplayers, file = "Raw-Data/currentplayers.csv")
+rm(url, wrbpage, currentplayers)
+
+# Scrap the appid from SteamDB
+left <- "https://steamdb.info/apps/page"
+page <- 1:1400
+url <- str_c(left, page, "/")
+
+get_appid <- function(html) {
+  # given a html of the season, return sub urls of per event
+  appid <- html %>%
+    html_nodes(".applogo+ td a") %>%
+    html_text()
+  return(appid)
+}
+
+get_name <- function(html) {
+  # given a html of the season, return sub urls of per event
+  name <- html %>%
+    html_nodes(".muted , .b") %>%
+    html_text()
+  return(name)
+}
+
+AppID <- data.frame()
+Sys.time()
+for (i in 1:length(url)) {
+  html <- read_html(url[i])
+  appid[(1 + 80*(i-1)):(80 + 80*(i-1))] <- get_appid(html)
+  name[(1 + 80*(i-1)):(80 + 80*(i-1))] <- get_name(html)
+}
+Sys.time()
+AppID <- as.data.frame(cbind(appid, name))
+## Attention: This data may change through seconds. In order to keep the reproducibility of this project, saving the data as csv file.
+# write.csv(AppID, file = "Raw-Data/AppID.csv")
+}
+
+```{r}
+# Import datasets
 Steam_sales <- read.csv("Raw-Data/Steam sales.csv")
-Steam_playtime <- read_csv("Raw-Data/Steam top by playtime.csv")
+Steam_playtime <- read.csv("Raw-Data/Steam top by playtime.csv")
+Current_players <- read.csv("Raw-Data/currentplayers.csv")
 ```
 
 # Data Cleaning
 ```{r}
 colnames(Steam_sales)[1] <- "Sales.rank"
 colnames(Steam_playtime)[1] <- "Playtime.rank"
+colnames(Current_players)[1] <- "CurrentPlayers.rank"
+AppID <- AppID[,-1]
+colnames(AppID) <- c("AppID", "Game")
 
-Steam <- merge(Steam_playtime,Steam_sales,by="Game")
+Steam <- merge(Steam_playtime, Steam_sales, by = "Game")
+Steam <- merge(Steam, Current_players, by = "Game")
+Steam <- merge(Steam, AppID, by = "Game")
 ```
 
 # EDA
-```{r}
+```{r, eval=F, echo=F}
 
 ```
 
