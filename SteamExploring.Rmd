@@ -271,10 +271,38 @@ raw.text$text <- as.character(raw.text$text)
 ```
 
 # Benford Analysis
-In this part, this project used sales data of games on Steam over past half of year(from Jun 2018 to Dec 2018) for verifing.
+In this part, this project used sales data of games on Steam over past half of year(from Jun 2018 to Dec 2018) for verifing. This data including sales records of 9623 games in total.
 ```{r}
+# Choose sales volume data of each game
+bfd.cp <- benford(Steam_sales$`Approximately Sales Volume`)
+bfd.cp
 
+# gets the Mean Absolute Deviation
+MAD(bfd.cp) 
+
+# gets the Chi-squared test
+chisq(bfd.cp) 
+
+# plot results from benford analysis
+plot(bfd.cp) 
+
+# get suspects data
+suspects <- getSuspects(bfd.cp, Steam_sales)
+# suspects data by ranking
+suspects_ranked <- suspectsTable(bfd.cp)
+kable(suspects_ranked[1:10], "latex", caption = "Top 10 of Suspects Data") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+# get duplicates data
+duplicates <- getDuplicates(bfd.cp, Steam_sales)
+# duplicates data by ranking
+duplicates_ranked <- duplicatesTable(bfd.cp)
+kable(duplicates_ranked[1:10], "latex", caption = "Top 10 of Duplicates Data") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
 ```
+\par
+Accoring to the plot, we can get the conclusion that there are some inconsistencies on lake data. The majority data obey the distribution of benford, but it shows the 10 largest discrepancies. From the table of duplicates data, the most probably duplicated number is 200, we can see that over 470 games sold 200 times over the past half of year which is extremly weird. Excepted that, 300 and 400 are also among the top 10 duplicates data. Insteresting.
+\par
 
 # Text Mining
 In text mining, this project choose top 10 reviews of top 30 games based on playing time of each game as representative. Armed at exploring what factors of a game play an important role for users.\par
