@@ -12,9 +12,8 @@ pacman::p_load("ggplot2", "knitr", "arm", "data.table", "foreign", "car", "faraw
 
 # Data Pre-processing
 ## Scraping Raw Data
+ATTENTION: The result of following code may change through seconds. In order to keep the reproducibility of this project, saving all data as csv files and DON'T run it(set "eval = FALSE").\par
 ```{r, eval = FALSE}
-## ATTENTION: The result of following code may change through seconds. In order to keep the reproducibility of this project, saving all data as csv files.
-
 # Scraping the data of current players from Steam Charts
 ## Specifying the url
 url <- "https://store.steampowered.com/stats/"
@@ -115,7 +114,8 @@ get_compare <- function(html) {
 
 get_lowestrecordedprice <- function(html) {
   LowestRecordedPrice <- html %>%
-    html_nodes(".price-discount-minor+ td , .owned+ tr .table-prices-converted+ td , .text-center+ td , .price-discount+ td , .price-discount-major+ td") %>%
+    html_nodes(".price-discount-minor+ td , .owned+ tr .table-prices-converted+ td ,
+               .text-center+ td , .price-discount+ td , .price-discount-major+ td") %>%
     html_text()
   return(LowestRecordedPrice)
 }
@@ -127,26 +127,32 @@ Currency <- html_text(html_nodes(html, ".price-line"))
 
 CurrentPrice <- html_text(html_nodes(html, ".price-line+ td"))
 
-ConvtertedPrice_raw <- html_text(html_nodes(html, "td.table-prices-converted:nth-child(3)"))
+ConvtertedPrice_raw <- html_text(html_nodes(html, 
+                                            "td.table-prices-converted:nth-child(3)"))
 ConvtertedPrice <- NULL
 ConvtertedPrice[1] <- CurrentPrice[1]
 ConvtertedPrice[2:41] <- ConvtertedPrice_raw[1:40]
 rm(ConvtertedPrice_raw)
 
-Compare_raw <- html_text(html_nodes(html, ".table-prices-converted+ .table-prices-converted"))
+Compare_raw <- html_text(html_nodes(html, ".table-prices-converted+
+                                    .table-prices-converted"))
 Compare <- NULL
 Compare[c(1, 41)] <- 0
 Compare[2:40] <- Compare_raw[1:39]
 rm(Compare_raw)
 
-LowestRecordedPrice_raw <- html_text(html_nodes(html, ".price-discount-major+ td , .price-discount+ td , .text-center+ td , .owned+ tr .table-prices-converted+ td , .price-discount-minor+ td"))
+LowestRecordedPrice_raw <- html_text(html_nodes(html, ".price-discount-major+ td ,
+                                                .price-discount+ td , .text-center+ td ,
+                                                .owned+ tr .table-prices-converted+ td ,
+                                                .price-discount-minor+ td"))
 LowestRecordedPrice[1] <- LowestRecordedPrice_raw[1]
 LowestRecordedPrice[2:40] <- LowestRecordedPrice_raw[3:41]
 LowestRecordedPrice[41] <- "$10.49"
 rm(LowestRecordedPrice_raw)
 
 StorePrices_PUBG <- data.frame()
-StorePrices_PUBG <- as.data.frame(cbind(Currency, CurrentPrice, ConvtertedPrice, Compare, LowestRecordedPrice))
+StorePrices_PUBG <- as.data.frame(cbind(Currency, CurrentPrice, ConvtertedPrice,
+                                        Compare, LowestRecordedPrice))
 write.csv(StorePrices_PUBG, file = "Raw-Data/StorePrices_PUBG.csv")
 
 # Scraping top10 reviews from top30 games based on play time
@@ -180,7 +186,7 @@ write.csv(raw.text, file = "Raw-Data/raw.text.csv")
 ```
 
 ## Import datasets
-```{r}
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
 Steam_sales <- read.csv("Raw-Data/Steam sales.csv")
 Steam_playtime <- read.csv("Raw-Data/Steam top by playtime.csv")
 Current_players <- read.csv("Raw-Data/currentplayers.csv")
@@ -189,24 +195,41 @@ raw.text <- read.csv("Raw-Data/raw.text.csv")
 ```
 
 ## Data Cleaning
-```{r, warning = FALSE, error = FALSE}
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
 # Steam
 colnames(Steam_sales)[1] <- "Sales.rank"
 colnames(Steam_playtime)[1] <- "Playtime.rank"
 colnames(Current_players)[1] <- "CurrentPlayers.rank"
 
-Steam <- merge(Steam_playtime, Steam_sales, by = "Game")
+## Merging datasets
+Steam <- merge(Steam_playtime, Steam_sales, by = "Game") # Free games don't have sale data
 Steam <- merge(Steam, Current_players, by = "Game")
 
-ScoreRank_raw <- unlist(strsplit(unlist(strsplit(unlist(strsplit(unlist(strsplit(as.character(Steam$Score.rank.Userscore...Metascore.), "[%]")), "[(]")), "[)]")), "[/]"))
+ScoreRank_raw <- unlist(strsplit(
+  unlist(strsplit(
+    unlist(strsplit(
+      unlist(strsplit(
+        as.character(Steam$Score.rank.Userscore...Metascore.), "[%]"
+      )), "[(]"
+    )), "[)]"
+  )), "[/]"
+))
 ScoreRank_raw <- na.omit(as.data.frame(as.numeric(ScoreRank_raw)))
 ScoreRank <- NULL
 ScoreRank[c(4 * 3, 16 * 3, 19 * 3, 23 * 3, 34 * 3, 38 * 3, 39 * 3, 44 * 3)] <- NA
 ScoreRank[c(1:11, 13:47, 49:56, 58:101, 103:113, 115:116, 118:131)] <- ScoreRank_raw[1:124, 1]
 
-PlayTime <- unlist(strsplit(unlist(strsplit(as.character(Steam$Playtime..Median.), "[(]")), "[)]"))
+PlayTime <- unlist(strsplit(
+  unlist(strsplit(
+    as.character(Steam$Playtime..Median.), "[(]"
+  )), "[)]"
+))
 
-Discount <- unlist(strsplit(unlist(strsplit(as.character(Steam$Max.discount), "[(]")), "[)]"))
+Discount <- unlist(strsplit(
+  unlist(strsplit(
+    as.character(Steam$Max.discount), "[(]"
+  )), "[)]"
+))
 
 for (i in 1:44) {
   Steam$ScoreRank[i] <- ScoreRank[1 + 3 * (i - 1)]
@@ -230,10 +253,18 @@ Steam$Release.date <- as.Date(Steam$Release.date, format = "%b %d,%Y")
 Steam$Release.year <- year(Steam$Release.date)
 Steam$Release.month <- month(Steam$Release.date)
 Steam$Release.day <- day(Steam$Release.date)
-Steam$SalesVolume <- round(Steam$Sales/Steam$Price.y)
 
-Steam <- Steam[, c(1, 2, 9, 17, 3, 6, 10:12, 32, 14, 28, 25:26, 18:24, 27, 29:31)]
-colnames(Steam) <- c("Game", "Rank of Playtime", "Rank of Sales", "Rank of CurrentPlayers", "Release Date", "Owners Level", "Owners Before", "Owners After", "Sales","Approximately Sales Volume", "Price", "Increase(Percentage)", "Max Discount(Percentage of Original)", "Lowest Price", "Current Players", "Peak Today", "Score Rank(Percentage)", "User Score", "Meta Score", "Average of Playtime", "Median of Playtime", "Actural Players(Percentage)", "Release Year", "Release Month", "Release Day")
+## Selecting and renaming useful variables from orginial dataset
+Steam <- Steam[, c(1, 2, 9, 17, 3, 6, 10:12, 14, 28, 25:26, 18:24, 27, 29:31)]
+colnames(Steam) <- c("Game", "Rank of Playtime", "Rank of Sales",
+                     "Rank of CurrentPlayers", "Release Date", "Owners Level", 
+                     "Owners Before", "Owners After", "Sales",
+                     "Price", "Increase(Percentage)", 
+                     "Max Discount(Percentage of Original)", "Lowest Price",
+                     "Current Players","Peak Today", "Score Rank(Percentage)",
+                     "User Score", "Meta Score", "Average of Playtime", 
+                     "Median of Playtime", "Actural Players(Percentage)", 
+                     "Release Year", "Release Month", "Release Day")
 
 # Steam Sales
 Steam_sales$Owners.before <- as.numeric(gsub("[,]", "", Steam_sales$Owners.before))
@@ -242,39 +273,234 @@ Steam_sales$Sales <- as.numeric(gsub("[,]", "", Steam_sales$Sales))
 Steam_sales$IncreasePercentage <- as.numeric(gsub("[%]", "", Steam_sales$Increase))
 Steam_sales$Price <- as.numeric(gsub("[$]", "", Steam_sales$Price))
 
-Discount <- unlist(strsplit(unlist(strsplit(as.character(Steam_sales$Max.discount), "[(]")), "[)]"))
+Discount <- unlist(strsplit(
+  unlist(strsplit(
+    as.character(Steam_sales$Max.discount), "[(]"
+  )), "[)]"
+))
 for (i in 1:9623) {
   Steam_sales$MaxDiscountPercentage[i] <- Discount[1 + 2 * (i - 1)]
   Steam_sales$LowestPrice[i] <- Discount[2 + 2 * (i - 1)]
 }
-Steam_sales$MaxDiscountPercentage <- as.numeric(gsub("[%]", "", Steam_sales$MaxDiscountPercentage))
+Steam_sales$MaxDiscountPercentage <- as.numeric(gsub("[%]", "",
+                                                     Steam_sales$MaxDiscountPercentage))
 Steam_sales$LowestPrice <- as.numeric(gsub("[$]", "", Steam_sales$LowestPrice))
 
+## Selecting and renaming useful variables from orginial dataset
 Steam_sales <- Steam_sales[, c(1:5, 7, 10:12)]
-colnames(Steam_sales) <- c("Rank of Sales", "Game", "Owners Before", "Owners After", "Sales", "Price", "Increase(Percentage)", "Max Discount(Percentage of Original)", "Lowest Price")
-Steam_sales$`Approximately Sales Volume` <- round(Steam_sales$Sales/Steam_sales$Price)
+colnames(Steam_sales) <- c("Rank of Sales", "Game", "Owners Before",
+                           "Owners After", "Sales", "Price", "Increase(Percentage)",
+                           "Max Discount(Percentage of Original)", "Lowest Price")
+
+# Steam Playtime
+PlayTime <- unlist(strsplit(
+  unlist(strsplit(
+    as.character(Steam_playtime$Playtime..Median.), "[(]"
+  )), "[)]"
+))
+for (i in 1:100) {
+  Steam_playtime$`Average of Playtime`[i] <- PlayTime[1 + 2 * (i - 1)]
+  Steam_playtime$`Median of Playtime`[i] <- PlayTime[2 + 2 * (i - 1)]
+}
+Steam_playtime$Release.date <- as.Date(Steam_playtime$Release.date, format = "%b %d,%Y")
+Steam_playtime$Players <- as.numeric(gsub("[%]", "", Steam_playtime$Players))
+colnames(Steam_playtime)[c(1,3,7)] <- c("Rank of Playtime", "Release Date",
+                                        "Actural Players(Percentage)")
 
 # Store Prices of Game "PUBG"
-StorePrices_PUBG$`Converted Price(USD)` <- as.numeric(gsub("[$]", "", StorePrices_PUBG$ConvtertedPrice))
-StorePrices_PUBG$`Lowest Recorded Price(USD)` <- as.numeric(gsub("[$]", "", StorePrices_PUBG$LowestRecordedPrice))
+StorePrices_PUBG$`Converted Price(USD)` <- as.numeric(gsub("[$]", "",
+                                                           StorePrices_PUBG$ConvtertedPrice))
+StorePrices_PUBG$`Lowest Recorded Price(USD)` <- as.numeric(
+  gsub("[$]", "", StorePrices_PUBG$LowestRecordedPrice)
+)
 StorePrices_PUBG$`Compare Percentage` <- as.numeric(gsub("[%]", "", StorePrices_PUBG$Compare))
 StorePrices_PUBG <- StorePrices_PUBG[,-c(1,3:6)]
 
 # Raw Text
 raw.text$X <- NULL
 raw.text$text <- as.character(raw.text$text)
+
+# Current Players
+colnames(Current_players) <- c("Rank of Current Players", "Game",
+                               "Current Players", "Peak Today")
 ```
 
 # EDA
-```{r}
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Top 10 Games of Play Time
+Steam_playtime_top10 <-
+  Steam_playtime %>%
+  select(
+    `Rank of Playtime`, Game, `Release Date`, Price, `Actural Players(Percentage)`,
+    `Average of Playtime`, `Median of Playtime`
+  ) %>%
+  top_n(10, -`Rank of Playtime`)
+colnames(Steam_playtime_top10)[1] <- "Rank"
 
+kable(Steam_playtime_top10, "latex", 
+      caption = "Top 10 Games of Play Time", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+
+# Top 10 Games of Sales
+Steam_sales_top10 <-
+  Steam_sales %>%
+  select(`Rank of Sales`, Game, `Owners After`, Price, `Lowest Price`) %>%
+  top_n(10, -`Rank of Sales`)
+
+kable(Steam_sales_top10, "latex", 
+      caption = "Top 10 Games of Sales", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+# Top 10 Games of Current Players
+Current_players_top10 <-
+  Current_players %>%
+  top_n(10, -`Rank of Current Players`)
+kable(Current_players_top10, "latex",
+      caption = "Top 10 Games of Current Players", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+# Historgram of Total Amount of Games with Different Owners Level
+ggplot(data = Steam_playtime %>% group_by(Owners) %>% count(), 
+       aes(x = Owners, y = n)) +
+  geom_bar(aes(fill = Owners), stat = "identity",
+           position = "stack", width = 0.8) +
+  labs(x = "Owners Level",
+       y = "Total Amount of Games", 
+       title = "Historgram of Total Amount of Games with Different Owners Level") +
+  theme(axis.text.x = element_text(angle = 45))
 ```
+\par
+The owners level of the majority games among top 100 based on play time either between 100,000,000 to 200,000,000 which is very high or between 200,000 to 500,000 or 1,000,000 to 2,000,000 which are lower than other levels. So those favorite games drive people pay more time on are either have tons of owners or have less owners but attract each owner to spent more time on it.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Rank of Playtime via. Rank of Current Players
+ggplot(data = Steam) +
+  aes(x = `Rank of Playtime`, y = `Rank of CurrentPlayers`, size = `Rank of Sales`) +
+  geom_point(color = "#807dba") +
+  labs(
+    title = "Rank of Playtime via. Rank of Current Players",
+    y = "Rank of Current Players"
+  ) +
+  theme_minimal()
+```
+\par
+From the rank of play time and current players, there is a weak positive correlated relationship between play time and the amount of current players. According to the size of each point, represented by rank of sales, there is no apparent relationship between sales volume and play time either or current players. The bigger point means the more that game sold.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Average and Median of Play Time via. Rank of Play Time
+ggplot(data = Steam) +
+  aes(x = `Average of Playtime`, y = `Median of Playtime`, fill = `Rank of Playtime`) +
+  geom_tile() +
+  scale_fill_distiller(palette = "PiYG") +
+  labs(title = "Average and Median of Play Time via. Rank of Play Time") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+```
+\par
+Average play time and median of play time are positive related. However, either of these two indicators seem have no apparent relationship to the rank of playtime. Even though the average and median play time of some games are low, the rank of playtime is still high. For these type of games, there are more users have been playing this game for a long time, on the same time, there are also more users might only played for few seconds. Hence, the average play time is low instead the total play time still on the top of the rank.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Release Date via. Rank of Sales(Last Half of 2018)
+ggplot(data = Steam) +
+  aes(x = `Release Date`, y = `Rank of Sales`) +
+  geom_line(color = "#a6cee3") +
+  labs(
+    title = "Release Date via. Rank of Sales(Last Half of 2018)",
+    y = "Rank of Sales"
+  ) +
+  theme_minimal()
+```
+\par
+The best seller among games are usually release recently. For users, latest games can keep novelty and follow the development of the computer. No one would like play a game with pixels.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Total Owners and Sales via. Price
+ggplot(data = Steam) +
+  aes(x = Price, y = `Owners After`, size = Sales) +
+  geom_point(color = "#fdae6b") +
+  labs(
+    title = "Total Owners and Sales Volume via. Price",
+    y = "Total Owners",
+    size = "Sales Volume"
+  ) +
+  theme_minimal()
+```
+\par
+The sales volume doesn't always for granted to have relationship of price. The best seller(biggest point on plot) is actually positioning the price of its produce at average level which can be accepted by most of people.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Historgram of Release Year
+ggplot(data = Steam) +
+  aes(x = `Release Year`, fill = as.factor(`Release Year`)) +
+  geom_histogram(bins = 30) +
+  labs(
+    title = "Histogram of Release Year",
+    y = "Count of Games",
+    fill = "Release Year"
+  ) +
+  theme_minimal()
+```
+\par
+Only few games released before 2010 are still on the top of rank, which is impressed.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Rank of Play Time via. Score Rank and Actural Players
+ggplot(data = Steam) +
+  aes(x = `Rank of Playtime`, y = `Score Rank(Percentage)`, 
+      fill = `Actural Players(Percentage)`) +
+  geom_tile() +
+  scale_fill_distiller(palette = "RdYlGn") +
+  labs(
+    title = "Rank of Play Time via. Score Rank and Actural Players",
+    y = "Score Rank(Percentage)"
+  ) +
+  theme_minimal()
+```
+\par
+The weird thing is, the more actual players(the percentage of people who are really playing among total owners) are, the lower of score rank(the user score of this games over how many percentage other games on Steam). Is this a common phenomenon with popular games which have more actual players but more complains?
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# User Score via. Meta Score
+ggplot(data = Steam) +
+  aes(x = `User Score`, y = `Meta Score`, size = `Score Rank(Percentage)`) +
+  geom_point(color = "#cc78a8") +
+  labs(
+    title = "User Score via. Meta Score",
+    y = "Meta Score"
+  ) +
+  theme_minimal()
+``` 
+\par
+This plot shows a U turn trend on the right side. In general, higher user score related to higher meta score. But even if higher meta score,  there are few games have lower score rank compared to other games on Steam.
+\par
+
+```{r, warning = FALSE, error =  FALSE, message =  FALSE}
+# Store Prices Data of PUBG through Different Countries
+StorePrices_PUBG_top10 <-
+  StorePrices_PUBG %>%
+  arrange(`Lowest Recorded Price(USD)`) %>%
+  top_n(10, -`Lowest Recorded Price(USD)`)
+
+kable(StorePrices_PUBG_top10, "latex", 
+      caption = "Top 10 Games of Play Time", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+```
+\par
+PUBG(PLAYERUNKNOWN'S BATTLEGROUNDS) as a favorite game not only on sales but also on players, the prices of it among different countries are different. The original price in Unite States is $29.99. The cheapest recorded price among all different countries is 6.18 dollars in Argentine Peso, which means if you have a Steam account in Argentine Peso, you can easily own this famous game with 80% off.
+\par
 
 # Benford Analysis
-In this part, this project used sales data of games on Steam over past half of year(from Jun 2018 to Dec 2018) for verifing. This data including sales records of 9623 games in total.
+In this part, this project used sales data of games on Steam over past half of year(from Jun 2018 to Dec 2018) for verifying. This data including sales records of 9623 games in total.\par
 ```{r}
 # Choose sales volume data of each game
-bfd.cp <- benford(Steam_sales$`Approximately Sales Volume`)
+bfd.cp <- benford(Steam_sales$Sales)
 bfd.cp
 
 # gets the Mean Absolute Deviation
@@ -301,37 +527,41 @@ kable(duplicates_ranked[1:10], "latex", caption = "Top 10 of Duplicates Data") %
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
 \par
-Accoring to the plot, we can get the conclusion that there are some inconsistencies on lake data. The majority data obey the distribution of benford, but it shows the 10 largest discrepancies. From the table of duplicates data, the most probably duplicated number is 200, we can see that over 470 games sold 200 times over the past half of year which is extremly weird. Excepted that, 300 and 400 are also among the top 10 duplicates data. Insteresting.
+According to the plot, we can get the conclusion that there are some inconsistencies on lake data. The majority data obey the distribution of benford, but it shows 8 large discrepancies. From the table of duplicates data, the most probably duplicated number is 2000, we can see that over 2271 games which is bigger than 20% of data sold 2000 times over the past half of year which is extremely weird. Excepted that, 3000 - 11000 are also among the top 10 duplicates data. Interesting. It might caused by recording in round or other way or the sales data appears on Steam is not convincing.
 \par
 
 # Text Mining
 In text mining, this project choose top 10 reviews of top 30 games based on playing time of each game as representative. Armed at exploring what factors of a game play an important role for users.\par
-```{r, error = FALSE, warning = FALSE, message = FALSE, fig.width = 3.5, fig.height = 3.5}
+```{r, error = FALSE, warning = FALSE, message = FALSE}
 tidy_review <- raw.text %>%
-  unnest_tokens(word, text)%>% 
-  mutate(word = str_extract(word , "[a-z'\\s]+")) %>%
-  anti_join(stop_words, by= "word") %>%
-  filter(!word %in% "[\\s]+",
-         !word %in% "",
-         !word %in% NA,
-         !word %in% "Posted",
-         !word %in% "posted",
-         !word %in% "game")
+  unnest_tokens(word, text) %>%
+  mutate(word = str_extract(word, "[a-z'\\s]+")) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(
+    !word %in% "[\\s]+",
+    !word %in% "",
+    !word %in% NA,
+    !word %in% "Posted",
+    !word %in% "posted",
+    !word %in% "game"
+  )
 
 # Import sentiment dictionaires
 bing <- get_sentiments("bing")
 
 sentitext <- raw.text %>%
-  unnest_tokens(sentence, text, token = "sentences") %>% 
+  unnest_tokens(sentence, text, token = "sentences") %>%
   ungroup() %>%
   unnest_tokens(word, sentence) %>%
   anti_join(stop_words, by = "word") %>%
-  filter(!word %in% "[\\s]+",
-         !word %in% "",
-         !word %in% NA,
-         !word %in% "Posted",
-         !word %in% "posted",
-         !word %in% "game")
+  filter(
+    !word %in% "[\\s]+",
+    !word %in% "",
+    !word %in% NA,
+    !word %in% "Posted",
+    !word %in% "posted",
+    !word %in% "game"
+  )
 
 bing_counts <- sentitext %>%
   inner_join(bing, by = "word") %>%
@@ -346,7 +576,7 @@ tidy_review %>%
 # Top 10 Hot Words on Positive and Negative Attitudes
 bing_counts %>%
   group_by(sentiment) %>%
-  top_n(10) %>%
+  top_n(10, n) %>%
   ungroup() %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n, fill = sentiment)) +
@@ -358,8 +588,10 @@ bing_counts %>%
     title = "Top 10 Hot Words on Positive and Negative Attitudes"
   ) +
   coord_flip() +
-  scale_fill_manual(values=c("#3182bd", "#fa9fb5"))
+  scale_fill_manual(values = c("#3182bd", "#fa9fb5"))
+```
 
+```{r, fig.width=6, fig.height=6}
 # Wordclound of Positive and Negative Attitudes
 sentitext %>%
   inner_join(bing, by = "word") %>%
@@ -371,11 +603,11 @@ sentitext %>%
   )
 ```
 \par
-From the wordcloud of all reviews, gamers focus more on words like "play", "time", "people" etc., which means what they really matter about a game are how this game preferomed, how many times they devoted in it and how was the entire community of this game. And from the top10 words on negative attitudes, bing dictionary may be not a good choice of sentiment analyzing because there are several words like "killer", "die" are not actually negative emotions when it comes to games. But it still shows that when the users have actual negative emotions about a game are usually because of bugs and other issues of game itself. Vice versa, for positive part, "fun", "free", "pretty" etc. are expected to see.
+From the wordcloud of all reviews, gamers focus more on words like "play", "time", "people" etc., which means what they really matter about a game are how this game preformed, how many times they devoted in it and how was the entire community of this game. And from the top10 words on negative attitudes, bing dictionary may be not a good choice of sentiment analyzing because there are several words like "killer", "die" are not actually negative emotions when it comes to games. But it still shows that when the users have actual negative emotions about a game are usually because of bugs and other issues of game itself. Vice versa, for positive part, "fun", "free", "pretty" etc. are expected to see.
 \par
 
-# Shiny apps
-```{r}
+# Shinyapps
+```{r, eval = FALSE}
 
 ```
 
