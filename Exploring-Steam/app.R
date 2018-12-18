@@ -46,7 +46,7 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 300,
     sidebarMenu(
-      menuItem("SALES", tabName = "1", icon = icon("fas fa-money-checkf-alt", lib = "font-awesome")),
+      menuItem("SALES", tabName = "1", icon = icon("fas fa-credit-card", lib = "font-awesome")),
       menuItem("REVIEWS", tabName = "2", icon = icon("fas fa-comments", lib = "font-awesome")),
       menuItem("TOP 100 GAMES", tabName = "3", icon = icon("fas fa-gamepad", lib = "font-awesome")),
       menuItem("PRICES - PUBG", tabName = "4", icon = icon("fas fa-motorcycle", lib = "font-awesome")),
@@ -62,12 +62,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "1",
         plotOutput('plot'),
-        fluidRow(column(4, offset = 1,
-                        selectInput('x', 'X', names(dataset), "Price"),
-                        selectInput('y', 'Y', names(dataset), "Owners After"),
-                        selectInput('color', 'Color', names(dataset), "Sales"),
-                        selectInput('size', 'Size', c('None', names(dataset)))
-                        ))
+        fluidRow()
       ),      
 
       # Second tab content
@@ -136,31 +131,7 @@ server <- function(input, output, session) {
 
   # Tab 1 scatter plot
   output$plot <- renderPlot({
-    dataset <- Steam_sales
-
-    if (input$size == "None") {
-      size <- 1
-    } else {
-      size <- dataset[, input$size]
-    }
-
-
-    ggplot(data = dataset) +
-      aes(
-        x = dataset[, input$x],
-        y = dataset[, input$y],
-        color = dataset[, input$color],
-        size = size
-      ) +
-      geom_point() +
-      scale_color_distiller(palette = "Spectral") +
-      theme_minimal() +
-      labs(
-        x = input$x,
-        y = input$y,
-        color = input$color,
-        size = input$size
-      )
+    
   })
 
   # Tab 2 Word Cloud
