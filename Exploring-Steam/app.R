@@ -18,6 +18,7 @@ library(tidyverse)
 library(tidytext)
 library(dplyr)
 library(wordcloud)
+library(utils)
 
 # Import Data
 Steam_sales <- read.csv("Steam_sales.csv")
@@ -26,6 +27,7 @@ Current_players <- read.csv("Current_players.csv")
 StorePrices_PUBG <- read.csv("StorePrices_PUBG.csv")
 raw.text <- read.csv("raw.text.csv")
 Steam <- read.csv("Steam.csv")
+dataset <- Steam_sales
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
@@ -62,7 +64,12 @@ ui <- dashboardPage(
       tabItem(
         tabName = "1",
         plotOutput('plot'),
-        fluidRow()
+        fluidRow(column(4, offset = 1,
+                        selectInput('x', 'X', names(dataset), "Price"),
+                        selectInput('y', 'Y', names(dataset), names(dataset)[[4]]),
+                        selectInput('color', 'Color', names(dataset), "Sales"),
+                        selectInput('size', 'Size', c('None', names(dataset)))
+                        ))
       ),      
 
       # Second tab content
@@ -131,7 +138,31 @@ server <- function(input, output, session) {
 
   # Tab 1 scatter plot
   output$plot <- renderPlot({
-    
+    dataset <- Steam_sales
+
+    if (input$size == "None") {
+      size <- 1
+    } else {
+      size <- dataset[, input$size]
+    }
+
+
+    ggplot(data = dataset) +
+      aes(
+        x = dataset[, input$x],
+        y = dataset[, input$y],
+        color = dataset[, input$color],
+        size = size
+      ) +
+      geom_point() +
+      scale_color_distiller(palette = "Spectral") +
+      theme_minimal() +
+      labs(
+        x = input$x,
+        y = input$y,
+        color = input$color,
+        size = input$size
+      )
   })
 
   # Tab 2 Word Cloud
