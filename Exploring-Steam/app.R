@@ -125,8 +125,7 @@ ui <- dashboardPage(
         tabName = "5",
         numericInput("maxrows5", "Rows to show:", 10),
         box(title = "DATA EXPLORER", collapsible = TRUE,
-            solidHeader = TRUE, DT::dataTableOutput("table5"), width = 12, height = 450),
-        downloadButton("downloadCsv2", "Download as CSV")
+            solidHeader = TRUE, DT::dataTableOutput("table5"), width = 12, height = 450)
       )
     )
   )
@@ -229,14 +228,6 @@ server <- function(input, output, session) {
     DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)
   })
 
-  # Tab 5 Steam csv file
-  output$downloadCsv2 <- downloadHandler(
-    filename = "STEAM.csv",
-    content = function(file) {
-      write.csv(Steam, file)
-    },
-    contentType = "text/csv"
-  )
 }
 # Run the application
 shinyApp(ui = ui, server = server)
