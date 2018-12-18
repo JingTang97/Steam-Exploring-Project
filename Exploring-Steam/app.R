@@ -12,7 +12,6 @@
 library(shiny)
 library(shinydashboard)
 library(ggplot2)
-library(plotly)
 library(lubridate)
 library(tidyverse)
 library(tidytext)
@@ -27,7 +26,13 @@ Current_players <- read.csv("Current_players.csv")
 StorePrices_PUBG <- read.csv("StorePrices_PUBG.csv")
 raw.text <- read.csv("raw.text.csv")
 Steam <- read.csv("Steam.csv")
+Steam_sales <- Steam_sales[,-1]
+Steam_playtime <- Steam_playtime[,-1]
+Current_players <- Current_players[,-1]
+StorePrices_PUBG <- StorePrices_PUBG[,-1]
+Steam <- Steam[,-1]
 dataset <- Steam_sales
+
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
@@ -51,8 +56,9 @@ ui <- dashboardPage(
       menuItem("SALES", tabName = "1", icon = icon("fas fa-credit-card", lib = "font-awesome")),
       menuItem("REVIEWS", tabName = "2", icon = icon("fas fa-comments", lib = "font-awesome")),
       menuItem("TOP 100 GAMES", tabName = "3", icon = icon("fas fa-gamepad", lib = "font-awesome")),
-      menuItem("PRICES - PUBG", tabName = "4", icon = icon("fas fa-motorcycle", lib = "font-awesome")),
-      menuItem("DATA EXPLORER", tabName = "5", icon = icon("fas fa-info", lib = "font-awesome"))
+      menuItem("BENFORD ANALYSIS", tabName = "4", icon = icon("fas fa-info", lib = "font-awesome")),
+      menuItem("PRICES - PUBG", tabName = "5", icon = icon("fas fa-motorcycle", lib = "font-awesome")),
+      menuItem("DATA EXPLORER", tabName = "6", icon = icon("fas fa-info", lib = "font-awesome"))
     )
   ),
 
@@ -64,9 +70,10 @@ ui <- dashboardPage(
       tabItem(
         tabName = "1",
         plotOutput('plot'),
-        fluidRow(column(4, offset = 1,
+        fluidRow(column(width = 4, offset = 1,
                         selectInput('x', 'X', names(dataset), "Price"),
-                        selectInput('y', 'Y', names(dataset), names(dataset)[[4]]),
+                        selectInput('y', 'Y', names(dataset), names(dataset)[[4]])),
+                 column(width = 4, offset = 1,
                         selectInput('color', 'Color', names(dataset), "Sales"),
                         selectInput('size', 'Size', c('None', names(dataset)))
                         ))
@@ -75,11 +82,11 @@ ui <- dashboardPage(
       # Second tab content
       tabItem(
         tabName = "2",
-        fluidRow(column(width = 6,
+        fluidRow(column(width = 3,
                         box(width = NULL,height = 550,
                             sliderInput("freq","Minimum Frequency:",min = 1,  max = 10, value = 1),
                             sliderInput("max","Maximum Number of Words:",min = 1,  max = 300, value = 300))),
-                 column(width = 6,
+                 column(width = 9,
                         box(width = NULL,title="Word Cloud",solidHeader = TRUE,
                             plotOutput("word",height = 500)))
         )
@@ -89,42 +96,44 @@ ui <- dashboardPage(
       tabItem(
         tabName = "3",
         tableOutput('table1'),
-        fluidRow(column(width = 12,
-                        radioButtons("TOP_BY", "TOP BY:",
-                                     c("SALES" = "SALES",
-                                       "PLAYTIME" = "PLAYTIME",
-                                       "CURRENT_PLAYERS" = "CURRENT PLAYERS"),"SALES"),
-                        box(width = 12,title = "TOP 100 GAMES", collapsible = TRUE,
-                            solidHeader = TRUE, DT::dataTableOutput("table1"), height = 450),
-                        numericInput("maxrows1", "Rows to show:", 25)),
-                 conditionalPanel(
-                   condition = "input.TOP_BY == 'SALES'",
-                   column(width = 6)
-                 ),
-                 conditionalPanel(
-                   condition = "input.TOP_BY == 'PLAYTIME'",
-                   column(width = 6)
-                 ),
-                 conditionalPanel(
-                   condition = "input.TOP_BY == 'CURRENT_PLAYERS'",
-                   column(width = 6)
-                 )
-               )
+        fluidPage(titlePanel("TOP 100 GAMES"),
+                  sidebarLayout(
+                    sidebarPanel(width = 3,
+                      selectInput("dataset", "TOP BY:",
+                          choices = c("SALES", "PLAYTIME", "CURRENT PLAYERS")),
+                      downloadButton("downloadData", "Download")
+                      ),
+                    mainPanel(
+                      tableOutput("table")
+                      )
+                    )
+                  )
         ),
 
       
       # Fourth tab content
       tabItem(
         tabName = "4",
+        fluidRow(column(width = 12,
+                        box(title = "Benford Analysis",width = NULL,solidHeader = TRUE,
+                            plotOutput("benford",height = 400))),
+                 column(width = 12,
+                        infoBoxOutput("benfordresult",width = NULL))
+        )
+      ),
+      
+      # Fifth tab content
+      tabItem(
+        tabName = "5",
         numericInput("maxrows4", "Rows to show:", 25),
         box(title = "PRICES - PUBG", collapsible = TRUE,
             solidHeader = TRUE, DT::dataTableOutput("table4"), width = 12, height = 450),
         downloadButton("downloadCsv1", "Download as CSV")
       ),
       
-      # Fifth tab content
+      # Sixth tab content
       tabItem(
-        tabName = "5",
+        tabName = "6",
         numericInput("maxrows5", "Rows to show:", 10),
         box(title = "DATA EXPLORER", collapsible = TRUE,
             solidHeader = TRUE, DT::dataTableOutput("table5"), width = 12, height = 450)
@@ -134,10 +143,11 @@ ui <- dashboardPage(
 )
 
 # Define server 
-server <- function(input, output, session) {
+server <- function(input, output) {
 
-  # Tab 1 scatter plot
+  # First tab content
   output$plot <- renderPlot({
+    
     dataset <- Steam_sales
 
     if (input$size == "None") {
@@ -165,7 +175,7 @@ server <- function(input, output, session) {
       )
   })
 
-  # Tab 2 Word Cloud
+  # Second tab content
   output$word <- renderPlot({
     raw.text$X <- NULL
     raw.text$text <- as.character(raw.text$text)
@@ -191,31 +201,47 @@ server <- function(input, output, session) {
     )
   })
 
-  # Tab 3 Top 100 Games
-  output$table1 <- DT::renderDataTable({
-    if (input.TOP_BY == "SALES") {
-      tabledata <- Steam_sales[1:input$maxrows1, ]
-      DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)
+  # Third tab content
+  datasetInput <- reactive({
+    switch(input$dataset,
+           "SALES" = Steam_sales[1:100,-c(7,8)],
+           "PLAYTIME" = Steam_playtime,
+           "CURRENT PLAYERS" = Current_players)
+  })
+  
+  output$table <- renderTable({
+    datasetInput()
+  })
+  
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste(input$dataset, ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(datasetInput(), file, row.names = FALSE)
     }
+  )
 
-    else if (input.TOP_BY == "PLAYTIME") {
-      tabledata <- Steam_playtime[1:input$maxrows1, ]
-      DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)
-    }
-
-    else if (input.TOP_BY == "CURRENT_PLAYERS") {
-      tabledata <- Current_players[1:input$maxrows1, ]
-      DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)
-    }
+  # Fourth tab content
+  output$benford <- renderPlot({
+    library(benford.analysis)
+    bfd <- benford(Steam_sales$Sales)
+    plot(bfd)
+  })
+  
+  myresult <- "According to the plot, we can get the conclusion that there are some discrepancies on this data. This data doesn't obey to the Benford's law consistently. From the result of duplicates data, the most probably duplicated number is 2000, over 20% of games sold 2000 times during the past half of year which is extremely weird. It might caused by recording in round or the sales data appears on Steam is not convincing."
+  output$benfordresult <- renderInfoBox({
+    infoBox(
+      "Result", myresult, fill = TRUE
+    )
   })
 
-  # Tab 4 PUBG
+  # Fifth tab content
   output$table4 <- DT::renderDataTable({
     tabledata <- StorePrices_PUBG[1:input$maxrows4, ]
-    DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)
+    DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(5000, 10000), scrollX = T, scrollY = "300px"), rownames = FALSE)
   })
-
-  # Tab 4 PUBG csv file
+  
   output$downloadCsv1 <- downloadHandler(
     filename = "PUBG.csv",
     content = function(file) {
@@ -224,7 +250,7 @@ server <- function(input, output, session) {
     contentType = "text/csv"
   )
 
-  # Tab 5 Steam Explorer
+  # Sixth tab content
   output$table5 <- DT::renderDataTable({
     tabledata <- Steam[1:input$maxrows5, ]
     DT::datatable(tabledata, options = list(searching = TRUE, pageLength = 50, lengthMenu = c(50, 100, 500), scrollX = T, scrollY = "300px"), rownames = FALSE)

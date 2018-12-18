@@ -5,8 +5,8 @@ account: jingtang
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 619243
-bundleId: 1769888
+bundleId: 1770114
 url: https://jingtang.shinyapps.io/Exploring-Steam/
-when: 1545109006.6383
+when: 1545117940.68121
 asMultiple: FALSE
 asStatic: FALSE
